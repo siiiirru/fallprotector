@@ -128,11 +128,10 @@ class QObj:
     def putYolo(self,t_id:int,boxes:list[YoloObj],image):
         self.YoloOnProcessing[t_id]=True
         self.CurrentImage[t_id]=image
+        t_Q=self.YoloQ[t_id]
         print(f"detected: {len(boxes)}")###############
         if self.previousYolo!=None:
-            for box in boxes:
-                obj=box
-                t_Q=self.YoloQ[t_id]
+            for obj in boxes:
                 if t_Q.qsize()!=100:
                     isFound=False
                     for p_obj in self.previousYolo:
@@ -144,9 +143,7 @@ class QObj:
                 else:
                     print("Yolo Queue overflow!!")
         else:
-            for box in boxes:
-                obj=box
-                t_Q=self.YoloQ[t_id]
+            for obj in boxes:
                 if t_Q.qsize()!=100:
                     isFound=False
                     if obj.isSame(None) and obj.check():
@@ -175,7 +172,11 @@ class QObj:
     def getCurrentImage(self,t_id:int):
         return self.CurrentImage[t_id]
     def isYoloStart(self,t_id:int):
+        if t_id==0:
+            print(f"for yolo: {self.YoloPreparedForYolo}")
+            print(f"on processing: {self.YoloOnProcessing}")
         if self.previousYolo==None:
+            print("passed")
             return t_id==0
         else:
             Flag=self.YoloPreparedForYolo[(t_id+2)%3] or self.YoloOnProcessing[(t_id+2)%3]
