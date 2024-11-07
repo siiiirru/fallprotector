@@ -127,6 +127,7 @@ class QObj:
     def putYolo(self,t_id:int,boxes:list[YoloObj],image):
         self.YoloStarted[t_id]=True
         self.CurrentImage[t_id]=image
+        print(f"detected: {len(boxes)}")###############
         if self.previousYolo!=None:
             for box in boxes:
                 obj=box
@@ -154,6 +155,7 @@ class QObj:
                         t_Q.put(obj)
                 else:
                     print("Yolo Queue overflow!!")
+        print(f"passed: {t_Q.qsize()}")
         self.YoloF[t_id]=True
         self.YoloStarted[t_id]=False
     def getYolo(self,t_id:int) -> list[YoloObj]:
@@ -240,6 +242,7 @@ def SkleltonXgboostThread():
             t_id=(t_id+1)%3
             if FALL_COUNTER>=2:
                 print("!!!real fall occurred!!!")
+            print("hey")
 image_thread=threading.Thread(target=ImageThread)
 yolo_threads:list[threading.Thread]=[]
 for i in range(3):
