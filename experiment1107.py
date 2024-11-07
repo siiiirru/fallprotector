@@ -1,5 +1,6 @@
 from threading import Thread
 from queue import Queue
+from time import sleep
 
 class QObj:
     def __init__(self):
@@ -7,6 +8,7 @@ class QObj:
         self.YoloStared=[False,False,False]
         self.previousYolo=None
     def putYolo(self,t_id:int):
+        print(t_id)
         self.YoloStared[t_id]=True
         self.YoloPreparedForSXT[t_id]=True
     def getYolo(self,t_id:int):
@@ -26,13 +28,15 @@ def YoloThread(t_id):
     while True:
         if Q.isYoloStart(t_id):
             Q.putYolo(t_id)
+            sleep(10)
 def SkleltonXgboostThread():
     t_id=0
     while True:
-        print(Q.YoloStared)
+        # print(Q.YoloStared)
         if Q.checkPossible(t_id):
             yoloList=Q.getYolo(t_id)
             t_id=(t_id+1)%3
+        # sleep(1)
 
 yolo_threads=[]
 for i in range(3):

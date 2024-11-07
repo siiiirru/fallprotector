@@ -83,7 +83,7 @@ class YoloObj:
                 return False
         return True
     def isSame(self,other:"YoloObj") -> bool:
-        if other!=None:
+        if other is not None:
             fX=abs(self.X-other.X)<self.W*0.3
             fY=abs(self.Y-other.Y)<self.H*0.3
             if fX and fY:
@@ -129,7 +129,7 @@ class QObj:
         self.CurrentImage[t_id]=image
         t_Q=self.YoloQ[t_id]
         print(f"detected: {len(boxes)}")###############
-        if self.previousYolo!=None:
+        if self.previousYolo is not None:
             for obj in boxes:
                 if t_Q.qsize()!=100:
                     isFound=False
@@ -169,9 +169,7 @@ class QObj:
     def getCurrentImage(self,t_id:int):
         return self.CurrentImage[t_id]
     def isYoloStart(self,t_id:int):
-        if t_id==0:
-            print(f"on processing: {self.YoloStared}")
-        if self.previousYolo==None:
+        if self.previousYolo is None:
             return t_id==0
         else:
             Flag=self.YoloStared[(t_id+2)%3]
@@ -189,7 +187,7 @@ def YoloThread(t_id):
     while RUNNING:
         if Q.isYoloStart(t_id):
             image=Q.getImage()
-            if not (image is None):
+            if image is not None:
                 resized_image = cv2.resize(image, YOLO_SIZE)
                 results=model(resized_image)
                 predictions = results.pred[0]
@@ -206,6 +204,7 @@ def SkleltonXgboostThread():
     t_id=0
     global FALL_COUNTER
     while RUNNING:
+        print(t_id)
         if Q.checkPossible(t_id):
             yoloList=Q.getYolo(t_id)
             image=Q.getCurrentImage(t_id)
@@ -243,7 +242,6 @@ def SkleltonXgboostThread():
             t_id=(t_id+1)%3
             if FALL_COUNTER>=2:
                 print("!!!real fall occurred!!!")
-            print("hey")
 image_thread=threading.Thread(target=ImageThread)
 yolo_threads:list[threading.Thread]=[]
 for i in range(3):
