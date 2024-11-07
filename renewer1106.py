@@ -84,8 +84,8 @@ class YoloObj:
         return True
     def isSame(self,other:"YoloObj") -> bool:
         if other!=None:
-            fX=abs(self.X-other.X)<self.W*0.1
-            fY=abs(self.Y-other.Y)<self.H*0.1
+            fX=abs(self.X-other.X)<self.W*0.3
+            fY=abs(self.Y-other.Y)<self.H*0.3
             if fX and fY:
                 self.dx=(self.X-other.X)/2
                 self.dy=(self.Y-other.Y)/2
@@ -103,13 +103,14 @@ class YoloObj:
         if self.previous==None:
             return 0
         else:
-            return self.previous.r_H/r_H
+            return r_H/self.previous.r_H
 class QObj:
     def __init__(self):
         self.ImageQ=Queue(10)
         self.YoloQ=[Queue(100),Queue(100),Queue(100)]
         self.CurrentImage=[None,None,None]
         self.YoloF=[False,False,False]
+        self.YoloStarted=[False,False,False]
         self.previousYolo=None
     def putImage(self,image:np.ndarray) -> None:
         if self.ImageQ.qsize()!=10:
@@ -124,11 +125,11 @@ class QObj:
         else:
             return None
     def putYolo(self,t_id:int,boxes:list[YoloObj],image):
+        self.YoloStarted[t_id]=True
         self.CurrentImage[t_id]=image
         if self.previousYolo!=None:
             for box in boxes:
-                x1,y1,x2,y2=map(int,box[:4])
-                obj=YoloObj(x1,y1,x2,y2)
+                obj=box
                 t_Q=self.YoloQ[t_id]
                 if t_Q.qsize()!=100:
                     isFound=False
@@ -142,8 +143,7 @@ class QObj:
                     print("Yolo Queue overflow!!")
         else:
             for box in boxes:
-                x1,y1,x2,y2=map(int,box[:4])
-                obj=YoloObj(x1,y1,x2,y2)
+                obj=box
                 t_Q=self.YoloQ[t_id]
                 if t_Q.qsize()!=100:
                     isFound=False
@@ -155,6 +155,7 @@ class QObj:
                 else:
                     print("Yolo Queue overflow!!")
         self.YoloF[t_id]=True
+        self.YoloStarted[t_id]=False
     def getYolo(self,t_id:int) -> list[YoloObj]:
         self.YoloF[t_id]=False
         t_Q=self.YoloQ[t_id]
@@ -173,7 +174,7 @@ class QObj:
         if self.previousYolo==None:
             return t_id==0
         else:
-            return self.YoloF[(t_id+2)%3]!=False
+            return self.YoloF[(t_id+2)%3] or self.YoloStarted[(t_id+2)%3]
 Q=QObj()
 def ImageThread():
     while RUNNING:
@@ -185,7 +186,7 @@ def ImageThread():
 def YoloThread(t_id):
     while RUNNING:
         image=Q.getImage()
-        if image!=None and Q.isYoloStart(t_id):
+        if not (image is None) and Q.isYoloStart(t_id):
             resized_image = cv2.resize(image, YOLO_SIZE)
             results=model(resized_image)
             predictions = results.pred[0]
@@ -195,6 +196,7 @@ def YoloThread(t_id):
             for box in person_predictions:
                 x1,y1,x2,y2=map(int,box[:4])
                 li[i]=YoloObj(x1,y1,x2,y2)
+                i+=1
             Q.putYolo(t_id,li,image)
 
 def SkleltonXgboostThread():
@@ -241,7 +243,7 @@ def SkleltonXgboostThread():
 image_thread=threading.Thread(target=ImageThread)
 yolo_threads:list[threading.Thread]=[]
 for i in range(3):
-    yolo_threads.append(threading.Thread(target=YoloThread,args=(i)))
+    yolo_threads.append(threading.Thread(target=YoloThread,args=(i,)))
 skeleton_xgboost_thread=threading.Thread(target=SkleltonXgboostThread)
 
 image_thread.start()
