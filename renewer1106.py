@@ -109,8 +109,9 @@ class QObj:
         self.ImageQ=Queue(10)
         self.YoloQ=[Queue(100),Queue(100),Queue(100)]
         self.CurrentImage=[None,None,None]
-        self.YoloF=[False,False,False]
-        self.YoloStarted=[False,False,False]
+        self.YoloPreparedForSXT=[False,False,False]
+        self.YoloPreparedForYolo=[False,False,False]
+        self.YoloOnProcessing=[False,False,False]
         self.previousYolo=None
     def putImage(self,image:np.ndarray) -> None:
         if self.ImageQ.qsize()!=10:
@@ -125,7 +126,7 @@ class QObj:
         else:
             return None
     def putYolo(self,t_id:int,boxes:list[YoloObj],image):
-        self.YoloStarted[t_id]=True
+        self.YoloOnProcessing[t_id]=True
         self.CurrentImage[t_id]=image
         print(f"detected: {len(boxes)}")###############
         if self.previousYolo!=None:
@@ -156,10 +157,11 @@ class QObj:
                 else:
                     print("Yolo Queue overflow!!")
         print(f"passed: {t_Q.qsize()}")
-        self.YoloF[t_id]=True
-        self.YoloStarted[t_id]=False
+        self.YoloPreparedForSXT[t_id]=True
+        self.YoloPreparedForYolo[t_id]=True
+        self.YoloOnProcessing[t_id]=False
     def getYolo(self,t_id:int) -> list[YoloObj]:
-        self.YoloF[t_id]=False
+        self.YoloPreparedForSXT[t_id]=False
         t_Q=self.YoloQ[t_id]
         li=[None]*t_Q.qsize()
         i=0
@@ -169,14 +171,16 @@ class QObj:
         self.previousYolo=li
         return li
     def checkPossible(self,t_id:int):
-        return self.YoloF[t_id]
+        return self.YoloPreparedForSXT[t_id]
     def getCurrentImage(self,t_id:int):
         return self.CurrentImage[t_id]
     def isYoloStart(self,t_id:int):
         if self.previousYolo==None:
             return t_id==0
         else:
-            return self.YoloF[(t_id+2)%3] or self.YoloStarted[(t_id+2)%3]
+            Flag=self.YoloPreparedForYolo[(t_id+2)%3] or self.YoloOnProcessing[(t_id+2)%3]
+            self.YoloPreparedForYolo[(t_id+2)%3]=False
+            return Flag
 Q=QObj()
 def ImageThread():
     while RUNNING:
@@ -187,19 +191,20 @@ def ImageThread():
         time.sleep(FRAME_INTERVAL_MS/1000)
 def YoloThread(t_id):
     while RUNNING:
-        image=Q.getImage()
-        if not (image is None) and Q.isYoloStart(t_id):
-            resized_image = cv2.resize(image, YOLO_SIZE)
-            results=model(resized_image)
-            predictions = results.pred[0]
-            person_predictions = predictions[predictions[:, -1] == 0]
-            li=[None]*len(person_predictions)
-            i=0
-            for box in person_predictions:
-                x1,y1,x2,y2=map(int,box[:4])
-                li[i]=YoloObj(x1,y1,x2,y2)
-                i+=1
-            Q.putYolo(t_id,li,image)
+        if Q.isYoloStart(t_id):
+            image=Q.getImage()
+            if not (image is None):
+                resized_image = cv2.resize(image, YOLO_SIZE)
+                results=model(resized_image)
+                predictions = results.pred[0]
+                person_predictions = predictions[predictions[:, -1] == 0]
+                li=[None]*len(person_predictions)
+                i=0
+                for box in person_predictions:
+                    x1,y1,x2,y2=map(int,box[:4])
+                    li[i]=YoloObj(x1,y1,x2,y2)
+                    i+=1
+                Q.putYolo(t_id,li,image)
 
 def SkleltonXgboostThread():
     t_id=0
