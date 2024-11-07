@@ -10,6 +10,7 @@ import time
 from queue import Queue, Empty
 import signal
 import joblib
+from pathlib import Path
 
 # Ignore FutureWarnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -176,13 +177,19 @@ class QObj:
             self.YoloStared[(t_id+2)%3]=False
             return Flag
 Q=QObj()
+addr=Path("/home/fallprotector/project/test_video/not_fall/cleaning_room")
 def ImageThread():
-    while RUNNING:
-        image=picam2.capture_array()
-        if image is None or image.size == 0:
-            continue
+    # while RUNNING:
+    #     image=picam2.capture_array()
+    #     if image is None or image.size == 0:
+    #         continue
+    #     Q.putImage(image)
+    #     time.sleep(FRAME_INTERVAL_MS/1000)
+    for im_addr in addr.glob("*"):
+        image=cv2.imread(im_addr)
         Q.putImage(image)
-        time.sleep(FRAME_INTERVAL_MS/1000)
+        time.sleep(1/30)
+    RUNNING=False
 def YoloThread(t_id):
     while RUNNING:
         if Q.isYoloStart(t_id):
@@ -245,6 +252,7 @@ def SkleltonXgboostThread():
             t_id=(t_id+1)%3
             if FALL_COUNTER>=2:
                 print("!!!real fall occurred!!!")
+print("Started!!!")
 image_thread=threading.Thread(target=ImageThread)
 yolo_threads:list[threading.Thread]=[]
 for i in range(3):
