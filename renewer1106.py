@@ -173,8 +173,8 @@ class QObj:
         if self.previousYolo is None:
             return t_id==0
         else:
-            if self.YoloStared[(t_id+2)%YOLO_THREAD_SIZE] and not self.YoloPreparedForSXT[t_id]:
-                self.YoloStared[(t_id+2)%YOLO_THREAD_SIZE]=False
+            if self.YoloStared[(t_id+YOLO_THREAD_SIZE-1)%YOLO_THREAD_SIZE] and not self.YoloPreparedForSXT[t_id]:
+                self.YoloStared[(t_id+YOLO_THREAD_SIZE-1)%YOLO_THREAD_SIZE]=False
                 return True
             else:
                 return False
