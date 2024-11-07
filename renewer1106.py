@@ -14,7 +14,7 @@ import joblib
 # Ignore FutureWarnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-FRAME_INTERVAL_MS=300
+FRAME_INTERVAL_MS=1000
 ORIGINAL_SIZE=(1920, 1080)
 FALL_COUNTER=0
 RUNNING=True
@@ -202,9 +202,12 @@ def YoloThread(t_id):
 
 def SkleltonXgboostThread():
     t_id=0
+    p_id=0
     global FALL_COUNTER
     while RUNNING:
-        print(t_id)
+        if p_id!=t_id:
+            print(t_id)
+            p_id=t_id
         if Q.checkPossible(t_id):
             yoloList=Q.getYolo(t_id)
             image=Q.getCurrentImage(t_id)
