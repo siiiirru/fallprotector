@@ -135,14 +135,11 @@ class QObj:
         if self.previousYolo is not None:
             for obj in boxes:
                 if t_Q.qsize()!=100:
-                    isFound=False
                     if len(self.previousYolo):
                         for p_obj in self.previousYolo:
-                            if obj.isSame(p_obj) and obj.check():
-                                isFound=True
+                            if obj.isSame(p_obj):
                                 break
-                        isFound=True
-                        if isFound:
+                        if obj.check():
                             t_Q.put(obj)
                     else:
                         t_Q.put(obj)
@@ -151,12 +148,9 @@ class QObj:
         else:
             for obj in boxes:
                 if t_Q.qsize()!=100:
-                    isFound=False
-                    if obj.isSame(None) and obj.check():
-                        isFound=True
-                        break
-                    if isFound:
-                        t_Q.put(obj)
+                    obj.isSame(None)
+                    obj.check()
+                    t_Q.put(obj)
                 else:
                     print("Yolo Queue overflow!!")
         print(f"passed: {t_Q.qsize()}")
@@ -179,9 +173,11 @@ class QObj:
         if self.previousYolo is None:
             return t_id==0
         else:
-            Flag=self.YoloStared[(t_id+2)%YOLO_THREAD_SIZE]
-            self.YoloStared[(t_id+2)%YOLO_THREAD_SIZE]=False
-            return Flag
+            if self.YoloStared[(t_id+2)%YOLO_THREAD_SIZE] and not self.YoloPreparedForSXT[t_id]:
+                self.YoloStared[(t_id+2)%YOLO_THREAD_SIZE]=False
+                return True
+            else:
+                return False
 Q=QObj()
 addr=Path("/home/fallprotector/project/test_video/not_fall/cleaning_room")
 def ImageThread():
@@ -216,7 +212,7 @@ def YoloThread(t_id):
                     i+=1
                 Q.putYolo(t_id,li,image)
         else:
-            time.sleep(FRAME_INTERVAL_S)
+            time.sleep(FRAME_INTERVAL_S/10)
 
 def SkleltonXgboostThread():
     t_id=0
@@ -264,7 +260,7 @@ def SkleltonXgboostThread():
             if FALL_COUNTER>=2:
                 print("!!!real fall occurred!!!")
         else:
-            time.sleep(FRAME_INTERVAL_S)
+            time.sleep(FRAME_INTERVAL_S/10)
 print("Started!!!")
 image_thread=threading.Thread(target=ImageThread)
 yolo_threads:list[threading.Thread]=[]
