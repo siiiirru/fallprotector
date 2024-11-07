@@ -110,8 +110,7 @@ class QObj:
         self.YoloQ=[Queue(100),Queue(100),Queue(100)]
         self.CurrentImage=[None,None,None]
         self.YoloPreparedForSXT=[False,False,False]
-        self.YoloPreparedForYolo=[False,False,False]
-        self.YoloOnProcessing=[False,False,False]
+        self.YoloStared=[False,False,False]
         self.previousYolo=None
     def putImage(self,image:np.ndarray) -> None:
         if self.ImageQ.qsize()!=10:
@@ -126,7 +125,7 @@ class QObj:
         else:
             return None
     def putYolo(self,t_id:int,boxes:list[YoloObj],image):
-        self.YoloOnProcessing[t_id]=True
+        self.YoloStared[t_id]=True
         self.CurrentImage[t_id]=image
         t_Q=self.YoloQ[t_id]
         print(f"detected: {len(boxes)}")###############
@@ -155,8 +154,6 @@ class QObj:
                     print("Yolo Queue overflow!!")
         print(f"passed: {t_Q.qsize()}")
         self.YoloPreparedForSXT[t_id]=True
-        self.YoloPreparedForYolo[t_id]=True
-        self.YoloOnProcessing[t_id]=False
     def getYolo(self,t_id:int) -> list[YoloObj]:
         self.YoloPreparedForSXT[t_id]=False
         t_Q=self.YoloQ[t_id]
@@ -173,14 +170,12 @@ class QObj:
         return self.CurrentImage[t_id]
     def isYoloStart(self,t_id:int):
         if t_id==0:
-            print(f"for yolo: {self.YoloPreparedForYolo}")
-            print(f"on processing: {self.YoloOnProcessing}")
+            print(f"on processing: {self.YoloStared}")
         if self.previousYolo==None:
-            print("passed")
             return t_id==0
         else:
-            Flag=self.YoloPreparedForYolo[(t_id+2)%3] or self.YoloOnProcessing[(t_id+2)%3]
-            self.YoloPreparedForYolo[(t_id+2)%3]=False
+            Flag=self.YoloStared[(t_id+2)%3]
+            self.YoloStared[(t_id+2)%3]=False
             return Flag
 Q=QObj()
 def ImageThread():
