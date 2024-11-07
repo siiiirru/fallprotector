@@ -136,12 +136,15 @@ class QObj:
             for obj in boxes:
                 if t_Q.qsize()!=100:
                     isFound=False
-                    for p_obj in self.previousYolo:
-                        if obj.isSame(p_obj) and obj.check():
-                            isFound=True
-                            break
-                    isFound=True
-                    if isFound:
+                    if len(self.previousYolo):
+                        for p_obj in self.previousYolo:
+                            if obj.isSame(p_obj) and obj.check():
+                                isFound=True
+                                break
+                        isFound=True
+                        if isFound:
+                            t_Q.put(obj)
+                    else:
                         t_Q.put(obj)
                 else:
                     print("Yolo Queue overflow!!")
@@ -193,8 +196,8 @@ def ImageThread():
         image=cv2.imread(im_addr)
         Q.putImage(image)
         time.sleep(FRAME_INTERVAL_S)
-        #print(i)
-        #i+=1
+        print(i)
+        i+=1
     RUNNING=False
 def YoloThread(t_id):
     while RUNNING:
