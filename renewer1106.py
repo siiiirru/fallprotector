@@ -67,28 +67,35 @@ class YoloObj:
         self.Y:float=(y1+y2)/2
         self.W:int=x2-x1
         self.H:int=y2-y1
-        if y2==y1:
-            print(y1)
         self.fCounter:int=1
-        self.dx:float=0
-        self.dy:float=0
+        self.dx:float=None
+        self.dy:float=None
         self.r_H:float=None
         self.previous:"YoloObj"=None
+        self.isGhost:bool=0
     def getOriginalXY(self):
         return (
             self.x1*MULTI,self.y1*MULTI,
             self.x2*MULTI,self.y2*MULTI
         )
+    def getXY(self):
+        return (
+            self.x1,self.y1,
+            self.x2,self.y2
+        )
     def check(self) -> bool:
-        fX=self.dx>self.W*0.05
-        fY=self.dy>self.H*0.05
-        isActive=fX and fY
+        if self.dx is not None: # not first time
+            fX=self.dx>self.W*0.05
+            fY=self.dy>self.H*0.05
+            isActive=fX and fY
+        else:
+            isActive=False
         if isActive:
             self.fCounter=0
         else:
             self.fCounter+=1
-            if self.fCounter==2:
-                return False
+        if self.fCounter>=2 or self.isGhost>=2:
+            return False
         return True
     def isSame(self,other:"YoloObj") -> bool:
         if other is not None:
@@ -98,9 +105,11 @@ class YoloObj:
                 self.dx=(self.X-other.X)/2
                 self.dy=(self.Y-other.Y)/2
                 other.previous=None
-                self.previous=other                
+                self.previous=other   
+                self.isGhost=0             
                 return True
             else:
+                self.isGhost+=1
                 return False
         else:
             self.fCounter=0
