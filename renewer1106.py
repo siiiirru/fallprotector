@@ -63,7 +63,6 @@ class YoloObj:
         self.Y:float=(y1+y2)/2
         self.W:int=x2-x1
         self.H:int=y2-y1
-        self.fCounter:int=1
         self.dx:float=0
         self.dy:float=0
         self.r_H:float=None
@@ -74,16 +73,20 @@ class YoloObj:
             self.x2*MULTI,self.y2*MULTI
         )
     def check(self) -> bool:
-        fX=self.dx>self.W*0.05
-        fY=self.dy>self.H*0.05
-        isActive=fX and fY
-        if isActive:
-            self.fCounter=0
-        else:
-            self.fCounter+=1
-            if self.fCounter==2:
+        fX,fY=0,0
+        if self.previous is not None:
+            #연속된 obj면
+            fX=self.dx>self.W*0.05
+            fY=self.dy>self.H*0.05
+            isActive=fX and fY
+            if isActive:
+                return True
+            #연속적이면서 정적인 객체는 YOLO_Q에 넣지않음
+            else: 
                 return False
-        return True
+        else:
+            #연속되지 않은 값이면 그냥 true 반환
+            return True
     def isSame(self,other:"YoloObj") -> bool:
         if other is not None:
             fX=abs(self.X-other.X)<self.W*0.3
@@ -91,19 +94,20 @@ class YoloObj:
             if fX and fY:
                 self.dx=(self.X-other.X)/2
                 self.dy=(self.Y-other.Y)/2
+                #찾았으면 이전 값을 prev로 설정
                 other.previous=None
                 self.previous=other                
                 return True
             return False
+        #이전 프레임 큐가 없을 때
         else:
-            self.fCounter=0
             self.dx=0
             self.dy=0
             return True
     def calDifferRealH(self,r_H):
         self.r_H=r_H
         if self.previous==None:
-            return 0
+            return 1
         else:
             return r_H/self.previous.r_H
 
@@ -117,27 +121,25 @@ class YOLO_OBJ_Q:
     def putYolo(self,boxes:list[YoloObj]):
             Y_Q=self.YoloQ
             print(f"detected: {len(boxes)} persons")###############
-            if  self.previousYolo is not None:
-                for obj in boxes:
-                    if Y_Q.qsize()!=10:
+            if Y_Q.qsize()!=100:
+                #이전 프레임 큐가 있을때
+                if self.previousYolo is not None:
+                    for obj in boxes:
                         for p_obj in self.previousYolo:
                             if obj.isSame(p_obj):
                                 break
+                            
                         if obj.check():
                             Y_Q.put(obj)
-                    else:
-                        Y_Q.put(obj)
+                #이전 프레임 큐가 없을때
                 else:
-                    print("Yolo Queue overflow!!")
+                    for obj in boxes:
+                            obj.isSame(None)
+                            obj.check()
+                            Y_Q.put(obj)
             else:
-                for obj in boxes:
-                    if Y_Q.qsize()!=100:
-                        obj.isSame(None)
-                        obj.check()
-                        Y_Q.put(obj)
-                    else:
-                        print("Yolo Queue overflow!!")
-            print(f"passed: {Y_Q.qsize()}persons")
+                print("Yolo Queue overflow!!")
+            print(f"put YoloQ: {Y_Q.qsize()} objs")
     
     #Yolo큐에 있는 것들 미디어파이프,XG부스트에서 쓰게 주면서 현재Yolo큐를 previous로 등록
     def getYolo(self) -> list[YoloObj]:
@@ -177,10 +179,11 @@ def main():
                 YOLO_Q.putYolo(frame_obj_list)
 
                 yoloList=YOLO_Q.getYolo()
-                frame_fall_counter=0
+                is_frame_fall=False
+                MD_error_ActiveObj=False
                 for yoloObj in yoloList:
                     x1,y1,x2,y2=yoloObj.getOriginalXY()
-                    croppedImage=image[x1:x2,y1:y2]
+                    croppedImage=image[y1:y2,x1:x2]
                     skeletons=pose.process(croppedImage)
                     if skeletons.pose_landmarks:
                         landmarks=skeletons.pose_landmarks.landmark
@@ -197,7 +200,7 @@ def main():
                             features[i]=landmarks[i].x
                             features[i+33]=Y
                         hRatio=(nose-minY)/(maxY-minY)
-                        r_H=hRatio*yoloObj.H
+                        r_H=hRatio*yoloObj.H #코의 실제위치
                         r_ratioH=yoloObj.calDifferRealH(r_H)
                         if r_ratioH<0.7:
                             features[:33]/=features[23]
@@ -207,15 +210,16 @@ def main():
                             dmatrix = xgb.DMatrix(data_scaled)
                             prediction = xgb_model.predict(dmatrix)
                             if prediction[0]>=0.6:
-                                frame_fall_counter+=1
+                                is_frame_fall=True
                                 print(f"fall predicion occurred: {prediction[0]}")
-                if frame_fall_counter>0: 
+                    elif yoloObj.previous is not None: MD_error_ActiveObj=True
+                if is_frame_fall: 
                     FALL_COUNTER+=1
                     if FALL_COUNTER>=2:
                         print("!!!real fall occurred!!!")
                         # alert()
                         FALL_COUNTER=0
-                else : FALL_COUNTER=0
+                elif MD_error_ActiveObj!=True : FALL_COUNTER=0
 
     pose.close()
     picam2.close()
