@@ -118,7 +118,9 @@ class YoloObj:
         if self.previous==None:
             return 1
         else:
-            return r_H/self.previous.r_H
+            if self.previous.r_H is not None:
+                return r_H/self.previous.r_H
+            return 1
 class QObj:
     def __init__(self):
         self.ImageQ=Queue(10)
