@@ -16,7 +16,7 @@ from pathlib import Path
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 YOLO_THREAD_SIZE=1
-FRAME_INTERVAL_MS=200
+FRAME_INTERVAL_MS=300
 FRAME_INTERVAL_S=FRAME_INTERVAL_MS/1000
 ORIGINAL_SIZE=(1920, 1080)
 FALL_COUNTER=0
@@ -274,6 +274,7 @@ def SkleltonXgboostThread():
                     r_H=yoloObj.H*noseMinMaxRatio
                     r_ratioH=yoloObj.calDifferRealH(r_H)
                     if r_ratioH<0.7:
+                        print("r_ratioH",r_ratioH)
                         features[:33]/=features[23]
                         features[33:]/=features[23+33]
                         features=features.reshape(1,-1)
