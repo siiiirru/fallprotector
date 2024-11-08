@@ -113,6 +113,7 @@ class YoloObj:
         if self.previous==None:
             return 1
         else:
+            if self.previous.r_H is None : return 1
             return r_H/self.previous.r_H
 
 
@@ -154,26 +155,26 @@ class YOLO_OBJ_Q:
         self.previousYolo=li
         return li
     
-i = 0
+addi = 0
 addr="/home/fallprotector/project/test_video/not_fall/cleaning_room/"
 
 def main():
     global FALL_COUNTER
+    global RUNNING
+    global addi
     print("Started!!!")
     YOLO_Q=YOLO_OBJ_Q()
     while RUNNING:
         try:
-            im_addr = addr+str(i)
+            im_addr = addr+str(addi)+".jpg"
             image = cv2.imread(im_addr)
-            i+=1
+            addi+=5
         except Exception:
             RUNNING=False
             break
 
         if image is not None:
                 resized_image = cv2.resize(image, YOLO_SIZE)
-                cv2.imshow("Processed Image",resized_image)
-                cv2.waitKey(1)
                 results=model(resized_image)
                 predictions = results.pred[0]
                 person_predictions = predictions[predictions[:, -1] == 0]
@@ -184,7 +185,11 @@ def main():
                     obj=YoloObj(x1,y1,x2,y2)
                     frame_obj_list[i]=obj
                     i+=1
+                    cv2.rectangle(resized_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # 초록색 박스 그리기
                 YOLO_Q.putYolo(frame_obj_list)
+                
+                cv2.imshow("Processed Image",resized_image)
+                cv2.waitKey(0)
 
                 yoloList=YOLO_Q.getYolo()
                 is_frame_fall=False
@@ -208,6 +213,8 @@ def main():
                             features[i]=landmarks[i].x
                             features[i+33]=Y
                         hRatio=(nose-minY)/(maxY-minY)
+                        if hRatio == 0:
+                            hRatio=0.9
                         r_H=hRatio*yoloObj.H #코의 실제위치
                         r_ratioH=yoloObj.calDifferRealH(r_H)
                         if r_ratioH<0.7:
@@ -241,3 +248,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
