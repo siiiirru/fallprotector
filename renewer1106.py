@@ -99,8 +99,8 @@ class YoloObj:
         return True
     def isSame(self,other:"YoloObj") -> bool:
         if other is not None:
-            fX=abs(self.X-other.X)<self.W*0.3
-            fY=abs(self.Y-other.Y)<self.H*0.3
+            fX=abs(self.X-other.X)<self.W*0.5
+            fY=abs(self.Y-other.Y)<self.H*0.5
             if fX and fY:
                 self.dx=(self.X-other.X)/2
                 self.dy=(self.Y-other.Y)/2
@@ -147,17 +147,16 @@ class QObj:
         self.CurrentImage[t_id]=image
         t_Q=self.YoloQ[t_id]
         print(f"detected: {len(boxes)}")###############
+        connected=0##############
         if self.previousYolo is not None:
             for obj in boxes:
                 if t_Q.qsize()!=100:
                     isGhost=True
-                    connected=0
                     for p_obj in self.previousYolo:
                         if obj.isSame(p_obj):
                             isGhost=False
                             connected+=1
                             break
-                    print("connected",connected)
                     obj.isGhost=isGhost
                     if obj.check() or True:
                         t_Q.put(obj)
@@ -171,6 +170,7 @@ class QObj:
                     t_Q.put(obj)
                 else:
                     print("Yolo Queue overflow!!")
+        print("connected",connected)
         print(f"passed: {t_Q.qsize()}")
         self.YoloPreparedForSXT[t_id]=True
     def getYolo(self,t_id:int) -> list[YoloObj]:
