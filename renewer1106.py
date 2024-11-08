@@ -24,6 +24,7 @@ MULTI=8 # Yolo 삽입 이미지와 원본 이미지 해상도 차이
 YOLO_SIZE=tuple(map(int,[i/MULTI for i in ORIGINAL_SIZE]))
 YOLO_IOU=0.5
 YOLO_CONF=0.34
+QSIZE=10
 
 # Load YOLOv5 model
 model = torch.hub.load('ultralytics/yolov5', 'yolov5n')
@@ -88,6 +89,7 @@ class YoloObj:
                 return False
         else:
             #연속되지 않은 값이면 그냥 true 반환
+            print(f"new obj , x1={self.x1}")
             return True
     def isSame(self,other:"YoloObj") -> bool:
         if other is not None:
@@ -116,12 +118,12 @@ class YoloObj:
 
 class YOLO_OBJ_Q:
     def __init__(self):
-        self.YoloQ=Queue(100)
+        self.YoloQ=Queue(QSIZE)
         self.previousYolo=None
     def putYolo(self,boxes:list[YoloObj]):
             Y_Q=self.YoloQ
             print(f"detected: {len(boxes)} persons")###############
-            if Y_Q.qsize()!=100:
+            if Y_Q.qsize()!=QSIZE:
                 #이전 프레임 큐가 있을때
                 if self.previousYolo is not None:
                     for obj in boxes:
@@ -169,7 +171,7 @@ def main():
         if image is not None:
                 resized_image = cv2.resize(image, YOLO_SIZE)
                 cv2.imshow("Processed Image",resized_image)
-
+                cv2.waitKey
                 results=model(resized_image)
                 predictions = results.pred[0]
                 person_predictions = predictions[predictions[:, -1] == 0]
@@ -224,9 +226,10 @@ def main():
                         # alert()
                         FALL_COUNTER=0
                 elif MD_error_ActiveObj!=True : FALL_COUNTER=0
-
+            
     pose.close()
     picam2.close()
+    cv2.destroyAllWindows()
     print("end")
 
 if __name__ == "__main__":
