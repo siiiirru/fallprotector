@@ -202,21 +202,21 @@ class QObj:
 Q=QObj()
 addr=Path("/home/fallprotector/project/test_video/not_fall/cleaning_room")
 def ImageThread():
-    # while RUNNING:
-    #     image=picam2.capture_array()
-    #     if image is None or image.size == 0:
-    #         continue
-    #     Q.putImage(image)
-    #     time.sleep(FRAME_INTERVAL_MS/1000)
-    global RUNNING
-    
-    for im_addr in addr.glob("*"):
-        if not RUNNING:
-            break
-        image=cv2.imread(im_addr)
+    while RUNNING:
+        image=picam2.capture_array()
+        if image is None or image.size == 0:
+            continue
         Q.putImage(image)
-        time.sleep(FRAME_INTERVAL_S)
-    RUNNING=False
+        time.sleep(FRAME_INTERVAL_MS/1000)
+    # global RUNNING
+    
+    # for im_addr in addr.glob("*"):
+    #     if not RUNNING:
+    #         break
+    #     image=cv2.imread(im_addr)
+    #     Q.putImage(image)
+    #     time.sleep(FRAME_INTERVAL_S)
+    # RUNNING=False
 def YoloThread(t_id):
     while RUNNING:
         if Q.isYoloStart(t_id):
