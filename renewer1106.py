@@ -67,7 +67,7 @@ class YoloObj:
         self.Y:float=(y1+y2)/2
         self.W:int=x2-x1
         self.H:int=y2-y1
-        self.fCounter:int=1
+        self.fCounter:int=0
         self.dx:float=None
         self.dy:float=None
         self.r_H:float=None
@@ -112,7 +112,6 @@ class YoloObj:
                 self.isGhost+=1
                 return False
         else:
-            self.fCounter=0
             return True
     def calDifferRealH(self,r_H):
         self.r_H=r_H
@@ -149,13 +148,14 @@ class QObj:
         if self.previousYolo is not None:
             for obj in boxes:
                 if t_Q.qsize()!=100:
-                    if len(self.previousYolo):
-                        for p_obj in self.previousYolo:
-                            if obj.isSame(p_obj):
-                                break
-                        if obj.check():
-                            t_Q.put(obj)
-                    else:
+                    isGhost=True
+                    for p_obj in self.previousYolo:
+                        if obj.isSame(p_obj):
+                            isGhost=False
+                            break
+                    obj.isGhost=isGhost
+                    if obj.check():
+                        
                         t_Q.put(obj)
                 else:
                     print("Yolo Queue overflow!!")
