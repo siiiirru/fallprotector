@@ -68,8 +68,8 @@ class YoloObj:
         self.W:int=x2-x1
         self.H:int=y2-y1
         self.fCounter:int=1
-        self.dx:float=None
-        self.dy:float=None
+        self.dx:float=0
+        self.dy:float=0
         self.r_H:float=None
         self.previous:"YoloObj"=None
     def getOriginalXY(self):
@@ -98,11 +98,10 @@ class YoloObj:
                 other.previous=None
                 self.previous=other                
                 return True
-            return False
+            else:
+                return False
         else:
             self.fCounter=0
-            self.dx=0
-            self.dy=0
             return True
     def calDifferRealH(self,r_H):
         self.r_H=r_H
