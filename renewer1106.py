@@ -15,7 +15,6 @@ from pathlib import Path
 # Ignore FutureWarnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-YOLO_THREAD_SIZE=2
 FRAME_INTERVAL_MS=1000
 FRAME_INTERVAL_S=FRAME_INTERVAL_MS/1000
 ORIGINAL_SIZE=(1920, 1080)
@@ -107,177 +106,134 @@ class YoloObj:
             return 0
         else:
             return r_H/self.previous.r_H
-class QObj:
+
+addr=Path("/home/fallprotector/project/test_video/not_fall/cleaning_room")
+
+
+class YOLO_OBJ_Q:
     def __init__(self):
-        self.ImageQ=Queue(10)
-        self.YoloQ=[Queue(100),Queue(100),Queue(100)]
-        self.CurrentImage=[None,None,None]
-        self.YoloPreparedForSXT=[False,False,False]
-        self.YoloStared=[False,False,False]
+        self.YoloQ=Queue(10)
         self.previousYolo=None
-    def putImage(self,image:np.ndarray) -> None:
-        if self.ImageQ.qsize()!=10:
-            self.ImageQ.put(image)
-        else:
-            self.ImageQ.get()
-            self.ImageQ.put(image)
-            print("Image Queue overflow!!")
-    def getImage(self) -> np.ndarray|None:
-        if self.ImageQ.qsize()!=0:
-            return self.ImageQ.get()
-        else:
-            return None
-    def putYolo(self,t_id:int,boxes:list[YoloObj],image):
-        self.YoloStared[t_id]=True
-        self.CurrentImage[t_id]=image
-        t_Q=self.YoloQ[t_id]
-        print(f"detected: {len(boxes)}")###############
-        if self.previousYolo is not None:
-            for obj in boxes:
-                if t_Q.qsize()!=100:
-                    if len(self.previousYolo):
+    def putYolo(self,boxes:list[YoloObj]):
+            Y_Q=self.YoloQ
+            print(f"detected: {len(boxes)} persons")###############
+            if  self.previousYolo is not None:
+                for obj in boxes:
+                    if Y_Q.qsize()!=10:
                         for p_obj in self.previousYolo:
                             if obj.isSame(p_obj):
                                 break
                         if obj.check():
-                            t_Q.put(obj)
+                            Y_Q.put(obj)
                     else:
-                        t_Q.put(obj)
+                        Y_Q.put(obj)
                 else:
                     print("Yolo Queue overflow!!")
-        else:
-            for obj in boxes:
-                if t_Q.qsize()!=100:
-                    obj.isSame(None)
-                    obj.check()
-                    t_Q.put(obj)
-                else:
-                    print("Yolo Queue overflow!!")
-        print(f"passed: {t_Q.qsize()}")
-        self.YoloPreparedForSXT[t_id]=True
-    def getYolo(self,t_id:int) -> list[YoloObj]:
-        self.YoloPreparedForSXT[t_id]=False
-        t_Q=self.YoloQ[t_id]
-        li=[None]*t_Q.qsize()
+            else:
+                for obj in boxes:
+                    if Y_Q.qsize()!=10:
+                        obj.isSame(None)
+                        obj.check()
+                        Y_Q.put(obj)
+                    else:
+                        print("Yolo Queue overflow!!")
+            print(f"passed: {Y_Q.qsize()}persons")
+    
+    #Yolo큐에 있는 것들 미디어파이프,XG부스트에서 쓰게 주면서 현재Yolo큐를 previous로 등록
+    def getYolo(self) -> list[YoloObj]:
+        Y_Q=self.YoloQ
+        li=[None]*Y_Q.qsize()
         i=0
-        while t_Q.qsize()!=0:
-            li[i]=t_Q.get()
+        while Y_Q.qsize()!=0:
+            li[i]=Y_Q.get()
             i+=1
         self.previousYolo=li
         return li
-    def checkPossible(self,t_id:int):
-        return self.YoloPreparedForSXT[t_id]
-    def getCurrentImage(self,t_id:int):
-        return self.CurrentImage[t_id]
-    def isYoloStart(self,t_id:int):
-        if self.previousYolo is None:
-            return t_id==0
-        else:
-            if self.YoloStared[(t_id+2)%YOLO_THREAD_SIZE] and not self.YoloPreparedForSXT[t_id]:
-                self.YoloStared[(t_id+2)%YOLO_THREAD_SIZE]=False
-                return True
-            else:
-                return False
-Q=QObj()
-addr=Path("/home/fallprotector/project/test_video/not_fall/cleaning_room")
-def ImageThread():
-    # while RUNNING:
-    #     image=picam2.capture_array()
-    #     if image is None or image.size == 0:
-    #         continue
-    #     Q.putImage(image)
-    #     time.sleep(FRAME_INTERVAL_MS/1000)
-    i=0
-    for im_addr in addr.glob("*"):
-        image=cv2.imread(im_addr)
-        Q.putImage(image)
-        time.sleep(FRAME_INTERVAL_S)
-        print(i)
-        i+=1
-    RUNNING=False
-def YoloThread(t_id):
+
+iterator = addr.glob("*")
+def main():
+    global FALL_COUNTER
+    print("Started!!!")
+    YOLO_Q=YOLO_OBJ_Q()
     while RUNNING:
-        if Q.isYoloStart(t_id):
-            image=Q.getImage()
-            if image is not None:
+        try:
+            im_addr = next(iterator) 
+            image = cv2.imread(im_addr)
+        except StopIteration:
+            break
+
+        if image is not None:
                 resized_image = cv2.resize(image, YOLO_SIZE)
                 results=model(resized_image)
                 predictions = results.pred[0]
                 person_predictions = predictions[predictions[:, -1] == 0]
-                li=[None]*len(person_predictions)
+                frame_obj_list=[None]*len(person_predictions)
                 i=0
                 for box in person_predictions:
                     x1,y1,x2,y2=map(int,box[:4])
-                    li[i]=YoloObj(x1,y1,x2,y2)
+                    obj=YoloObj(x1,y1,x2,y2)
+                    frame_obj_list[i]=obj
                     i+=1
-                Q.putYolo(t_id,li,image)
-        else:
-            time.sleep(FRAME_INTERVAL_S/10)
+                YOLO_Q.putYolo(frame_obj_list)
 
-def SkleltonXgboostThread():
-    t_id=0
-    p_id=0
-    global FALL_COUNTER
-    while RUNNING:
-        if p_id!=t_id:
-            print(t_id)
-            p_id=t_id
-        if Q.checkPossible(t_id):
-            yoloList=Q.getYolo(t_id)
-            image=Q.getCurrentImage(t_id)
-            for yoloObj in yoloList:
-                x1,y1,x2,y2=yoloObj.getOriginalXY()
-                croppedImage=image[x1:x2,y1:y2]
-                skeletons=pose.process(croppedImage)
-                if skeletons.pose_landmarks:
-                    landmarks=skeletons.pose_landmarks.landmark
-                    maxY=-999
-                    minY=999
-                    nose=landmarks[0].y
-                    features=np.zeros(66,float)
-                    for i in range(33):
-                        Y=landmarks[i].y
-                        if maxY<Y:
-                            maxY=Y
-                        if minY>Y:
-                            minY=Y
-                        features[i]=landmarks[i].x
-                        features[i+33]=Y
-                    hRatio=(nose-minY)/(maxY-minY)
-                    r_H=hRatio*yoloObj.H
-                    r_ratioH=yoloObj.calDifferRealH(r_H)
-                    if r_ratioH<0.7:
-                        features[:33]/=features[23]
-                        features[33:]/=features[23+33]
-                        features=features.reshape(1,-1)
-                        data_scaled = scaler.transform(features)
-                        dmatrix = xgb.DMatrix(data_scaled)
-                        prediction = xgb_model.predict(dmatrix)
-                        if prediction[0]>=0.6:
-                            FALL_COUNTER+=1
-                            print(f"fall predicion occurred: {prediction[0]}")
-            t_id=(t_id+1)%YOLO_THREAD_SIZE
-            if FALL_COUNTER>=2:
-                print("!!!real fall occurred!!!")
-        else:
-            time.sleep(FRAME_INTERVAL_S/10)
-print("Started!!!")
-image_thread=threading.Thread(target=ImageThread)
-yolo_threads:list[threading.Thread]=[]
-for i in range(YOLO_THREAD_SIZE):
-    yolo_threads.append(threading.Thread(target=YoloThread,args=(i,)))
-skeleton_xgboost_thread=threading.Thread(target=SkleltonXgboostThread)
+                yoloList=Q.getYolo()
+                frame_fall_counter=0
+                for yoloObj in yoloList:
+                    x1,y1,x2,y2=yoloObj.getOriginalXY()
+                    croppedImage=image[x1:x2,y1:y2]
+                    skeletons=pose.process(croppedImage)
+                    if skeletons.pose_landmarks:
+                        landmarks=skeletons.pose_landmarks.landmark
+                        maxY=-999
+                        minY=999
+                        nose=landmarks[0].y
+                        features=np.zeros(66,float)
+                        for i in range(33):
+                            Y=landmarks[i].y
+                            if maxY<Y:
+                                maxY=Y
+                            if minY>Y:
+                                minY=Y
+                            features[i]=landmarks[i].x
+                            features[i+33]=Y
+                        hRatio=(nose-minY)/(maxY-minY)
+                        r_H=hRatio*yoloObj.H
+                        r_ratioH=yoloObj.calDifferRealH(r_H)
+                        if r_ratioH<0.7:
+                            features[:33]/=features[23]
+                            features[33:]/=features[23+33]
+                            features=features.reshape(1,-1)
+                            data_scaled = scaler.transform(features)
+                            dmatrix = xgb.DMatrix(data_scaled)
+                            prediction = xgb_model.predict(dmatrix)
+                            if prediction[0]>=0.6:
+                                frame_fall_counter+=1
+                                print(f"fall predicion occurred: {prediction[0]}")
+                if frame_fall_counter>0: 
+                    FALL_COUNTER+=1
+                    if FALL_COUNTER>=2:
+                        print("!!!real fall occurred!!!")
+                        # alert()
+                        FALL_COUNTER=0
+                else : FALL_COUNTER=0
 
-image_thread.start()
-for yolo_thread in yolo_threads:
-    yolo_thread.start()
-skeleton_xgboost_thread.start()
+                
 
-image_thread.join()
-for yolo_thread in yolo_threads:
-    yolo_thread.join()
-skeleton_xgboost_thread.join()
 
-pose.close()
-picam2.close()
-print("end")
+
+    
+
+
+    
+
+
+
+
+
+
+    pose.close()
+    picam2.close()
+    print("end")
+
+if __name__ == "__main__":
+    main()
