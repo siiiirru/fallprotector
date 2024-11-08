@@ -116,7 +116,8 @@ class QObj:
         self.YoloQ=[Queue(100),Queue(100),Queue(100)]
         self.CurrentImage=[None]*YOLO_THREAD_SIZE
         self.YoloPreparedForSXT=[False]*YOLO_THREAD_SIZE
-        self.YoloStared=[False]*YOLO_THREAD_SIZE
+        # self.YoloStared=[False]*YOLO_THREAD_SIZE
+        self.YoloStared=[True]*YOLO_THREAD_SIZE
         self.previousYolo=None
     def putImage(self,image:np.ndarray) -> None:
         if self.ImageQ.qsize()!=10:
@@ -179,7 +180,8 @@ class QObj:
             return t_id==0
         else:
             if self.YoloStared[(t_id+YOLO_THREAD_SIZE-1)%YOLO_THREAD_SIZE] and not self.YoloPreparedForSXT[t_id]:
-                self.YoloStared[(t_id+YOLO_THREAD_SIZE-1)%YOLO_THREAD_SIZE]=False
+                # self.YoloStared[(t_id+YOLO_THREAD_SIZE-1)%YOLO_THREAD_SIZE]=False
+
                 return True
             else:
                 return False
