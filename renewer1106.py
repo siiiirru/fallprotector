@@ -284,11 +284,14 @@ def SkleltonXgboostThread():
                         if prediction[0]>=0.6:
                             FALL_COUNTER+=1
                             print(f"fall predicion occurred: {prediction[0]}")
+                        else:
+                            FALL_COUNTER=0
 
             t_id=(t_id+1)%YOLO_THREAD_SIZE
             if FALL_COUNTER>=2:
                 print("!!!real fall occurred!!!")
                 FALL_COUNTER=0
+                RUNNING=False
         else:
             time.sleep(FRAME_INTERVAL_S/10)
 print("Started!!!")
