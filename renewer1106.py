@@ -232,7 +232,10 @@ def SkleltonXgboostThread():
             for yoloObj in yoloList:
                 x1,y1,x2,y2=yoloObj.getOriginalXY()
                 croppedImage=image[x1:x2,y1:y2]
-                skeletons=pose.process(croppedImage)
+                try:
+                    skeletons=pose.process(croppedImage)
+                except:
+                    continue
                 if skeletons.pose_landmarks:
                     landmarks=skeletons.pose_landmarks.landmark
                     maxY=-999
@@ -260,6 +263,7 @@ def SkleltonXgboostThread():
                         if prediction[0]>=0.6:
                             FALL_COUNTER+=1
                             print(f"fall predicion occurred: {prediction[0]}")
+
             t_id=(t_id+1)%YOLO_THREAD_SIZE
             if FALL_COUNTER>=2:
                 print("!!!real fall occurred!!!")
