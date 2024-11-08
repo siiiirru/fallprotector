@@ -67,6 +67,8 @@ class YoloObj:
         self.Y:float=(y1+y2)/2
         self.W:int=x2-x1
         self.H:int=y2-y1
+        if y2==y1:
+            print(y1)
         self.fCounter:int=1
         self.dx:float=0
         self.dy:float=0
@@ -251,7 +253,8 @@ def SkleltonXgboostThread():
                         features[i]=landmarks[i].x
                         features[i+33]=Y
                     hRatio=(nose-minY)/(maxY-minY)
-                    r_H=hRatio*yoloObj.H
+                    # r_H=hRatio*yoloObj.H
+                    r_H=yoloObj.H
                     r_ratioH=yoloObj.calDifferRealH(r_H)
                     if r_ratioH<0.7:
                         features[:33]/=features[23]
