@@ -195,8 +195,11 @@ def ImageThread():
     #         continue
     #     Q.putImage(image)
     #     time.sleep(FRAME_INTERVAL_MS/1000)
-    i=0
+    global RUNNING
+    
     for im_addr in addr.glob("*"):
+        if not RUNNING:
+            break
         image=cv2.imread(im_addr)
         Q.putImage(image)
         time.sleep(FRAME_INTERVAL_S)
@@ -252,9 +255,10 @@ def SkleltonXgboostThread():
                             minY=Y
                         features[i]=landmarks[i].x
                         features[i+33]=Y
-                    hRatio=(nose-minY)/(maxY-minY)
+                    # hRatio=(nose/features[23+33]-minY/features[23+33])/(maxY/features[23+33]-minY/features[23+33])
                     # r_H=hRatio*yoloObj.H
-                    r_H=yoloObj.H
+                    r_ratioH=(nose-minY)/(maxY-minY)
+                    r_H=yoloObj.H*r_ratioH
                     r_ratioH=yoloObj.calDifferRealH(r_H)
                     if r_ratioH<0.7:
                         features[:33]/=features[23]
