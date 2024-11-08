@@ -154,7 +154,7 @@ class QObj:
                             isGhost=False
                             break
                     obj.isGhost=isGhost
-                    if obj.check():
+                    if obj.check() or True:
                         
                         t_Q.put(obj)
                 else:
