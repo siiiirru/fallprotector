@@ -16,7 +16,7 @@ from pathlib import Path
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 YOLO_THREAD_SIZE=1
-FRAME_INTERVAL_MS=1000
+FRAME_INTERVAL_MS=200
 FRAME_INTERVAL_S=FRAME_INTERVAL_MS/1000
 ORIGINAL_SIZE=(1920, 1080)
 FALL_COUNTER=0
@@ -198,8 +198,6 @@ def ImageThread():
         image=cv2.imread(im_addr)
         Q.putImage(image)
         time.sleep(FRAME_INTERVAL_S)
-        print(i)
-        i+=1
     RUNNING=False
 def YoloThread(t_id):
     while RUNNING:
@@ -265,6 +263,7 @@ def SkleltonXgboostThread():
             t_id=(t_id+1)%YOLO_THREAD_SIZE
             if FALL_COUNTER>=2:
                 print("!!!real fall occurred!!!")
+                FALL_COUNTER=0
         else:
             time.sleep(FRAME_INTERVAL_S/10)
 print("Started!!!")
@@ -272,19 +271,22 @@ image_thread=threading.Thread(target=ImageThread)
 yolo_threads:list[threading.Thread]=[]
 for i in range(YOLO_THREAD_SIZE):
     yolo_threads.append(threading.Thread(target=YoloThread,args=(i,)))
-skeleton_xgboost_thread=threading.Thread(target=SkleltonXgboostThread)
+# skeleton_xgboost_thread=threading.Thread(target=SkleltonXgboostThread)
 
 image_thread.start()
 for yolo_thread in yolo_threads:
     yolo_thread.start()
-skeleton_xgboost_thread.start()
+# skeleton_xgboost_thread.start()
+
+SkleltonXgboostThread()
 
 image_thread.join()
 for yolo_thread in yolo_threads:
     yolo_thread.join()
-skeleton_xgboost_thread.join()
+# skeleton_xgboost_thread.join()
 
 pose.close()
 picam2.close()
 print("end")
+
 
