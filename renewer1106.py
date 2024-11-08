@@ -77,8 +77,8 @@ class YoloObj:
         fX,fY=0,0
         if self.previous is not None:
             #연속된 obj면
-            fX=self.dx>self.W*0.05
-            fY=self.dy>self.H*0.05
+            fX=self.dx>self.W*0.001
+            fY=self.dy>self.H*0.001
             isActive=fX and fY
             if isActive:
                 print(f"persist obj , x1={self.x1}")
@@ -93,8 +93,8 @@ class YoloObj:
             return True
     def isSame(self,other:"YoloObj") -> bool:
         if other is not None:
-            fX=abs(self.X-other.X)<self.W*0.3
-            fY=abs(self.Y-other.Y)<self.H*0.3
+            fX=abs(self.X-other.X)<self.W*0.5
+            fY=abs(self.Y-other.Y)<self.H*0.5
             if fX and fY:
                 self.dx=(self.X-other.X)/2
                 self.dy=(self.Y-other.Y)/2
@@ -154,8 +154,8 @@ class YOLO_OBJ_Q:
         self.previousYolo=li
         return li
     
-addr=Path("/home/fallprotector/project/test_video/not_fall/cleaning_room")
-iterator = addr.glob("*")
+i = 0
+addr="/home/fallprotector/project/test_video/not_fall/cleaning_room/"
 
 def main():
     global FALL_COUNTER
@@ -163,15 +163,17 @@ def main():
     YOLO_Q=YOLO_OBJ_Q()
     while RUNNING:
         try:
-            im_addr = next(iterator) 
+            im_addr = addr+str(i)
             image = cv2.imread(im_addr)
-        except StopIteration:
+            i+=1
+        except Exception:
+            RUNNING=False
             break
 
         if image is not None:
                 resized_image = cv2.resize(image, YOLO_SIZE)
                 cv2.imshow("Processed Image",resized_image)
-                cv2.waitKey
+                cv2.waitKey(1)
                 results=model(resized_image)
                 predictions = results.pred[0]
                 person_predictions = predictions[predictions[:, -1] == 0]
@@ -217,15 +219,20 @@ def main():
                             prediction = xgb_model.predict(dmatrix)
                             if prediction[0]>=0.6:
                                 is_frame_fall=True
-                                print(f"fall predicion occurred: {prediction[0]}")
-                    elif yoloObj.previous is not None: MD_error_ActiveObj=True
+                                print(f"[fall] predicion occurred: {prediction[0]}")
+                            else :print(f"[not fall] predicion occurred: {prediction[0]}")
+                        else: print(f"[not fall] r_ratioH={r_ratioH} is lower 0.7")
+                    else :
+                        print("Failed to generate coordinates in MediaPipe.")
+                        if yoloObj.previous is not None:
+                            MD_error_ActiveObj=True
                 if is_frame_fall: 
                     FALL_COUNTER+=1
                     if FALL_COUNTER>=2:
                         print("!!!real fall occurred!!!")
                         # alert()
                         FALL_COUNTER=0
-                elif MD_error_ActiveObj!=True : FALL_COUNTER=0
+                elif MD_error_ActiveObj==False : FALL_COUNTER=0
             
     pose.close()
     picam2.close()
