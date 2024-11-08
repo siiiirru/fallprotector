@@ -15,7 +15,7 @@ from pathlib import Path
 # Ignore FutureWarnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-YOLO_THREAD_SIZE=2
+YOLO_THREAD_SIZE=1
 FRAME_INTERVAL_MS=1000
 FRAME_INTERVAL_S=FRAME_INTERVAL_MS/1000
 ORIGINAL_SIZE=(1920, 1080)
@@ -27,9 +27,12 @@ YOLO_IOU=0.5
 YOLO_CONF=0.34
 
 # Load YOLOv5 model
-model = torch.hub.load('ultralytics/yolov5', 'yolov5n')
-model.iou = YOLO_IOU
-model.conf = YOLO_CONF
+yolo_models=[]
+for i in range(YOLO_THREAD_SIZE):
+    model = torch.hub.load('ultralytics/yolov5', 'yolov5n')
+    model.iou = YOLO_IOU
+    model.conf = YOLO_CONF
+    yolo_models.append(model)
 # Initialize MediaPipe Pose
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose(static_image_mode=False, model_complexity=1,min_detection_confidence=0.5)
@@ -111,9 +114,9 @@ class QObj:
     def __init__(self):
         self.ImageQ=Queue(10)
         self.YoloQ=[Queue(100),Queue(100),Queue(100)]
-        self.CurrentImage=[None,None,None]
-        self.YoloPreparedForSXT=[False,False,False]
-        self.YoloStared=[False,False,False]
+        self.CurrentImage=[None]*YOLO_THREAD_SIZE
+        self.YoloPreparedForSXT=[False]*YOLO_THREAD_SIZE
+        self.YoloStared=[False]*YOLO_THREAD_SIZE
         self.previousYolo=None
     def putImage(self,image:np.ndarray) -> None:
         if self.ImageQ.qsize()!=10:
@@ -166,6 +169,8 @@ class QObj:
         self.previousYolo=li
         return li
     def checkPossible(self,t_id:int):
+        # print(self.YoloPreparedForSXT)
+        # print(self.YoloStared)
         return self.YoloPreparedForSXT[t_id]
     def getCurrentImage(self,t_id:int):
         return self.CurrentImage[t_id]
@@ -201,7 +206,7 @@ def YoloThread(t_id):
             image=Q.getImage()
             if image is not None:
                 resized_image = cv2.resize(image, YOLO_SIZE)
-                results=model(resized_image)
+                results=yolo_models[t_id](resized_image)
                 predictions = results.pred[0]
                 person_predictions = predictions[predictions[:, -1] == 0]
                 li=[None]*len(person_predictions)
@@ -281,3 +286,4 @@ skeleton_xgboost_thread.join()
 pose.close()
 picam2.close()
 print("end")
+
