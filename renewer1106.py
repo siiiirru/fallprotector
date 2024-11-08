@@ -122,7 +122,7 @@ class YoloObj:
 class QObj:
     def __init__(self):
         self.ImageQ=Queue(10)
-        self.YoloQ=[Queue(100),Queue(100),Queue(100)]
+        self.YoloQ=[Queue(100) for _ in range(YOLO_THREAD_SIZE)]
         self.CurrentImage=[None]*YOLO_THREAD_SIZE
         self.YoloPreparedForSXT=[False]*YOLO_THREAD_SIZE
         # self.YoloStared=[False]*YOLO_THREAD_SIZE
@@ -245,7 +245,7 @@ def SkleltonXgboostThread():
             image=Q.getCurrentImage(t_id)
             for yoloObj in yoloList:
                 x1,y1,x2,y2=yoloObj.getOriginalXY()
-                croppedImage=image[x1:x2,y1:y2]
+                croppedImage=image[y1:y2,x1:x2]
                 try:
                     skeletons=pose.process(croppedImage)
                 except:
