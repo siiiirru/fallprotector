@@ -27,6 +27,7 @@ def main():
     global FALL_COUNTER
     global RUNNING
     global addi
+    bg_subtractor = cv2.createBackgroundSubtractorMOG2()
     print("Started!!!")
     while RUNNING:
         try:
@@ -36,19 +37,35 @@ def main():
         except Exception:
             RUNNING = False
             break
-
         if image is not None:
             # 원본 이미지에서 MediaPipe 처리 (이미지를 RGB로 변환)
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             skeletons = pose.process(image_rgb)
 
+            # 배경 차분 적용
+            fg_mask = bg_subtractor.apply(image)
+            
+            # 특정 픽셀 값 이상을 움직임으로 간주 (임계값 설정)
+            motion_detected = np.sum(fg_mask) > 50000  # 임계값 조정
+
+            if motion_detected:
+                # 움직임이 감지되면, 외곽선 추출
+                contours, _ = cv2.findContours(fg_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+                for contour in contours:
+                    if cv2.contourArea(contour) > 500:  # 너무 작은 영역은 제외 (예: 잡음)
+                        # 외곽선에 대해 경계 박스를 그리기
+                        x, y, w, h = cv2.boundingRect(contour)
+                        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)  # 녹색 경계 박스
+
+            
             if skeletons.pose_landmarks:
                 landmarks = skeletons.pose_landmarks.landmark
                 maxY = -999
                 minY = 999
                 nose = landmarks[0].y  # 코의 y 좌표
                 features = np.zeros(66, float)
-                
+                '''
                 # 랜드마크를 순회하면서 이미지에 점과 선을 그린다
                 for i in range(33):
                     Y = landmarks[i].y
@@ -82,7 +99,7 @@ def main():
                 # 코의 실제 위치로 비율 계산 (hRatio)
                 hRatio = (nose - minY) / (maxY - minY) if (maxY - minY) != 0 else 0.9
                 print(f"Height Ratio: {hRatio}")
-                '''
+                
                 # XGBoost 예측 (선택 사항)
                 features = features.reshape(1, -1)
                 data_scaled = scaler.transform(features)
@@ -92,10 +109,11 @@ def main():
                     print(f"[fall] Prediction occurred: {prediction[0]}")
                 else:
                     print(f"[not fall] Prediction occurred: {prediction[0]}")
-
-            else:
-                print("Failed to generate coordinates in MediaPipe.")
                 '''
+        else:
+            print("image end")
+            RUNNING=False
+                
 
             # 결과 이미지 표시
             cv2.imshow("Processed Image", image)
