@@ -80,9 +80,11 @@ class YoloObj:
             fY=self.dy>self.H*0.05
             isActive=fX and fY
             if isActive:
+                print(f"persist obj , x1={self.x1}")
                 return True
             #연속적이면서 정적인 객체는 YOLO_Q에 넣지않음
             else: 
+                print(f"not persist obj , x1={self.x1}")
                 return False
         else:
             #연속되지 않은 값이면 그냥 true 반환
@@ -110,8 +112,6 @@ class YoloObj:
             return 1
         else:
             return r_H/self.previous.r_H
-
-addr=Path("/home/fallprotector/project/test_video/not_fall/cleaning_room")
 
 
 class YOLO_OBJ_Q:
@@ -151,8 +151,10 @@ class YOLO_OBJ_Q:
             i+=1
         self.previousYolo=li
         return li
-
+    
+addr=Path("/home/fallprotector/project/test_video/not_fall/cleaning_room")
 iterator = addr.glob("*")
+
 def main():
     global FALL_COUNTER
     print("Started!!!")
@@ -166,6 +168,8 @@ def main():
 
         if image is not None:
                 resized_image = cv2.resize(image, YOLO_SIZE)
+                cv2.imshow("Processed Image",resized_image)
+
                 results=model(resized_image)
                 predictions = results.pred[0]
                 person_predictions = predictions[predictions[:, -1] == 0]
