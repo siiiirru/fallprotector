@@ -64,8 +64,8 @@ class YoloObj:
         self.W:int=x2-x1
         self.H:int=y2-y1
         self.fCounter:int=1
-        self.dx:float=None
-        self.dy:float=None
+        self.dx:float=0
+        self.dy:float=0
         self.r_H:float=None
         self.previous:"YoloObj"=None
     def getOriginalXY(self):
@@ -112,7 +112,7 @@ addr=Path("/home/fallprotector/project/test_video/not_fall/cleaning_room")
 
 class YOLO_OBJ_Q:
     def __init__(self):
-        self.YoloQ=Queue(10)
+        self.YoloQ=Queue(100)
         self.previousYolo=None
     def putYolo(self,boxes:list[YoloObj]):
             Y_Q=self.YoloQ
@@ -131,7 +131,7 @@ class YOLO_OBJ_Q:
                     print("Yolo Queue overflow!!")
             else:
                 for obj in boxes:
-                    if Y_Q.qsize()!=10:
+                    if Y_Q.qsize()!=100:
                         obj.isSame(None)
                         obj.check()
                         Y_Q.put(obj)
@@ -176,7 +176,7 @@ def main():
                     i+=1
                 YOLO_Q.putYolo(frame_obj_list)
 
-                yoloList=Q.getYolo()
+                yoloList=YOLO_Q.getYolo()
                 frame_fall_counter=0
                 for yoloObj in yoloList:
                     x1,y1,x2,y2=yoloObj.getOriginalXY()
@@ -216,20 +216,6 @@ def main():
                         # alert()
                         FALL_COUNTER=0
                 else : FALL_COUNTER=0
-
-                
-
-
-
-    
-
-
-    
-
-
-
-
-
 
     pose.close()
     picam2.close()
