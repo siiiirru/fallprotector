@@ -108,7 +108,7 @@ class YoloObj:
     def calDifferRealH(self,r_H):
         self.r_H=r_H
         if self.previous==None:
-            return 0
+            return 1
         else:
             return r_H/self.previous.r_H
 class QObj:
@@ -257,8 +257,8 @@ def SkleltonXgboostThread():
                         features[i+33]=Y
                     # hRatio=(nose/features[23+33]-minY/features[23+33])/(maxY/features[23+33]-minY/features[23+33])
                     # r_H=hRatio*yoloObj.H
-                    r_ratioH=(nose-minY)/(maxY-minY)
-                    r_H=yoloObj.H*r_ratioH
+                    noseMinMaxRatio=(nose-minY)/(maxY-minY)
+                    r_H=yoloObj.H*noseMinMaxRatio
                     r_ratioH=yoloObj.calDifferRealH(r_H)
                     if r_ratioH<0.7:
                         features[:33]/=features[23]
