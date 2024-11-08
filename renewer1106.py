@@ -151,13 +151,15 @@ class QObj:
             for obj in boxes:
                 if t_Q.qsize()!=100:
                     isGhost=True
+                    connected=0
                     for p_obj in self.previousYolo:
                         if obj.isSame(p_obj):
                             isGhost=False
+                            connected+=1
                             break
+                    print("connected",connected)
                     obj.isGhost=isGhost
                     if obj.check() or True:
-                        
                         t_Q.put(obj)
                 else:
                     print("Yolo Queue overflow!!")
